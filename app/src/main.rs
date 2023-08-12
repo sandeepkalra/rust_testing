@@ -12,7 +12,7 @@ mod typedefs;
 #[tokio::main]
 async fn main() {
     let o_db = sync::Arc::new(typedefs::InMemModDB {
-        regitered_modules: Vec::new(),
+        regitered_modules: sync::Mutex::new(Vec::new()),
     });
 
     let cli_app = Router::new().route("/cli", routing::get(cli::cli_main));

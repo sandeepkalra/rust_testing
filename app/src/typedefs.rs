@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{de, skip_serializing_none};
-use std::{collections::HashMap, fmt, ops::Add};
+use std::{collections::HashMap, fmt, ops::Add, sync};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GenericResponse {
@@ -134,12 +134,19 @@ impl fmt::Display for RegisterResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct InMemModDB {
-    pub regitered_modules: Vec<RegisterRequest>,
+    pub regitered_modules: sync::Mutex<Vec<RegisterRequest>>,
 }
 impl fmt::Display for InMemModDB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "not yet impleted fmt::Display for Vec<RegisterRequest>")
+        let locked_inner_object = self.regitered_modules.lock().unwrap();
+        let len = locked_inner_object.len();
+        let s = format!("inner vector<RegisterRequest> is of size={}", len);
+        write!(f, "{}", s)
+        // lock will be released here
     }
 }
+
+// good q/a:
+// https://stackoverflow.com/questions/75121484/shared-state-doesnt-work-because-of-lifetimes
