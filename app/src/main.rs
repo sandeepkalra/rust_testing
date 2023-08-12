@@ -4,14 +4,14 @@ use axum::{
     response::{self, IntoResponse},
     routing, Router,
 };
-use serde::{Deserialize, Serialize, __private::ser::serialize_tagged_newtype};
+use serde::{Deserialize, Serialize};
 use std::{any, collections::HashMap, fs, net, sync, thread, time, vec};
 mod cli;
 mod typedefs;
 
 #[tokio::main]
 async fn main() {
-    let _db = sync::Arc::new(typedefs::InMemModDB {
+    let o_db = sync::Arc::new(typedefs::InMemModDB {
         regitered_modules: Vec::new(),
     });
 
@@ -20,13 +20,23 @@ async fn main() {
     let app = Router::new()
         .merge(cli_app)
         .route(
-            "/api/v1/to_dependencies",
-            routing::post(crate::dependencies_handler),
+            "/api/:app_name/:id/v1/to_dependencies",
+            routing::post({
+                let db_captured_by_closure = o_db.clone();
+                move |path, payload| {
+                    crate::dependencies_handler(path, payload, db_captured_by_closure)
+                }
+            }),
         )
         .route("/api/v1/to_peer", routing::post(crate::peers_handler))
         .route(
             "/api/v1/register/:app_name/:id",
-            routing::post(crate::registrations_handler),
+            routing::post({
+                let db_captured_by_closure = o_db.clone();
+                move |path, payload| {
+                    crate::registrations_handler(path, payload, db_captured_by_closure)
+                }
+            }),
         )
         .route("/", routing::get(crate::handle_root));
 
@@ -46,10 +56,11 @@ async fn main() {
 async fn registrations_handler(
     extract::Path((app_name, app_id)): extract::Path<(String, u32)>,
     extract::Json(mut payload): extract::Json<typedefs::RegisterRequest>,
+    _db: sync::Arc<typedefs::InMemModDB>,
 ) -> response::Response {
     payload.app_id = app_id;
     payload.app_name.clone_from(&app_name);
-    let s = format!("request from '{app_name}:{app_id}' with data {payload}"); // payload needs std::fmt::Display
+    let s = format!("request from '{app_name}:{app_id}' with data {payload}"); // payload needs std::fmt::display
     s.into_response()
 }
 
@@ -60,19 +71,25 @@ async fn peers_handler(
     payload.app_id = app_id;
     payload.app_name.clone_from(&app_name);
     //
-    // TODO: from here, we have to work on the data!
+    // todo: from here, we have to work on the data!
     String::from("to_peers not implemented").into_response()
 }
 
 async fn dependencies_handler(
     extract::Path((app_name, app_id)): extract::Path<(String, u32)>,
     extract::Json(mut payload): extract::Json<typedefs::InfoToOtherMS>,
+    db: sync::Arc<typedefs::InMemModDB>,
 ) -> response::Response {
     payload.app_id = app_id;
     payload.app_name.clone_from(&app_name);
     //
     // TODO: from here, we have to work on the data!
-    String::from("to_dependencies not implemented").into_response()
+    let s = format!(
+        "{}:{}. with payload {} and db {}",
+        app_name, app_id, payload, db,
+    );
+    s.into_response()
+    //   String::from("to_dependencies not implemented").into_response()
 }
 
 //

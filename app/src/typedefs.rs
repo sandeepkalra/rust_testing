@@ -138,3 +138,8 @@ impl fmt::Display for RegisterResponse {
 pub struct InMemModDB {
     pub regitered_modules: Vec<RegisterRequest>,
 }
+impl fmt::Display for InMemModDB {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "not yet impleted fmt::Display for Vec<RegisterRequest>")
+    }
+}
