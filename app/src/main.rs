@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(dead_code)]
 use axum::{
     extract,
     response::{self, IntoResponse},
@@ -20,7 +21,7 @@ async fn main() {
     let app = Router::new()
         .merge(cli_app)
         .route(
-            "/api/:app_name/:id/v1/to_dependencies",
+            "/:app_name/:id/api/v1/to_dependencies",
             routing::post({
                 let db_captured_by_closure = o_db.clone();
                 move |path, payload| {
@@ -28,9 +29,16 @@ async fn main() {
                 }
             }),
         )
-        .route("/api/v1/to_peer", routing::post(crate::peers_handler))
+        // earlier without closure ---> .route("/api/v1/to_peer", routing::post(crate::peers_handler))
         .route(
-            "/api/v1/register/:app_name/:id",
+            "/:app_name/:id/api/v1/to_peer",
+            routing::post({
+                let db_captured_by_closure = o_db.clone();
+                move |path, payload| crate::peers_handler(path, payload, db_captured_by_closure)
+            }),
+        )
+        .route(
+            "/:app_name/:id/api/v1/register",
             routing::post({
                 let db_captured_by_closure = o_db.clone();
                 move |path, payload| {
@@ -67,6 +75,7 @@ async fn registrations_handler(
 async fn peers_handler(
     extract::Path((app_name, app_id)): extract::Path<(String, u32)>,
     extract::Json(mut payload): extract::Json<typedefs::InfoToOtherMS>,
+    _db: sync::Arc<typedefs::InMemModDB>,
 ) -> response::Response {
     payload.app_id = app_id;
     payload.app_name.clone_from(&app_name);

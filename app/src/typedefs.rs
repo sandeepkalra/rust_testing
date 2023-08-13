@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{de, skip_serializing_none};
-use std::{collections::HashMap, fmt, ops::Add, sync};
+use std::{collections::HashMap, fmt, hash::Hash, ops::Add, str::FromStr, sync};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GenericResponse {
@@ -145,6 +145,29 @@ impl fmt::Display for InMemModDB {
         let s = format!("inner vector<RegisterRequest> is of size={}", len);
         write!(f, "{}", s)
         // lock will be released here
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CliCommand {
+    pub command: String,
+    pub subcommand: String,
+    pub args: HashMap<String, serde_json::Value>,
+}
+
+pub struct CliCommandErr; // 0 implementation
+impl FromStr for CliCommand {
+    type Err = CliCommandErr;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.split_once(' ')
+            .and_then(|(cmd, subcmd)| {
+                Some(CliCommand {
+                    command: cmd.to_string(),
+                    subcommand: subcmd.to_string(),
+                    args: HashMap::new(),
+                })
+            })
+            .ok_or(CliCommandErr)
     }
 }
 
