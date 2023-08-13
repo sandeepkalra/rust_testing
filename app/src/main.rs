@@ -15,6 +15,7 @@ async fn main() {
     let o_db = sync::Arc::new(typedefs::InMemModDB {
         regitered_modules: sync::Mutex::new(Vec::new()),
     });
+    let o_cli = sync::Arc::new(false);
 
     let cli_app = Router::new().route("/cli", routing::get(cli::cli_main));
 
@@ -24,8 +25,9 @@ async fn main() {
             "/:app_name/:id/api/v1/to_dependencies",
             routing::post({
                 let db_captured_by_closure = o_db.clone();
+                let cli_state = o_cli.clone();
                 move |path, payload| {
-                    crate::dependencies_handler(path, payload, db_captured_by_closure)
+                    crate::dependencies_handler(path, payload, db_captured_by_closure, cli_state)
                 }
             }),
         )
@@ -34,15 +36,19 @@ async fn main() {
             "/:app_name/:id/api/v1/to_peer",
             routing::post({
                 let db_captured_by_closure = o_db.clone();
-                move |path, payload| crate::peers_handler(path, payload, db_captured_by_closure)
+                let cli_state = o_cli.clone();
+                move |path, payload| {
+                    crate::peers_handler(path, payload, db_captured_by_closure, cli_state)
+                }
             }),
         )
         .route(
             "/:app_name/:id/api/v1/register",
             routing::post({
                 let db_captured_by_closure = o_db.clone();
+                let cli_state = o_cli.clone();
                 move |path, payload| {
-                    crate::registrations_handler(path, payload, db_captured_by_closure)
+                    crate::registrations_handler(path, payload, db_captured_by_closure, cli_state)
                 }
             }),
         )
@@ -65,6 +71,7 @@ async fn registrations_handler(
     extract::Path((app_name, app_id)): extract::Path<(String, u32)>,
     extract::Json(mut payload): extract::Json<typedefs::RegisterRequest>,
     _db: sync::Arc<typedefs::InMemModDB>,
+    _cli: sync::Arc<bool>,
 ) -> response::Response {
     payload.app_id = app_id;
     payload.app_name.clone_from(&app_name);
@@ -76,6 +83,7 @@ async fn peers_handler(
     extract::Path((app_name, app_id)): extract::Path<(String, u32)>,
     extract::Json(mut payload): extract::Json<typedefs::InfoToOtherMS>,
     _db: sync::Arc<typedefs::InMemModDB>,
+    _cli: sync::Arc<bool>,
 ) -> response::Response {
     payload.app_id = app_id;
     payload.app_name.clone_from(&app_name);
@@ -88,6 +96,7 @@ async fn dependencies_handler(
     extract::Path((app_name, app_id)): extract::Path<(String, u32)>,
     extract::Json(mut payload): extract::Json<typedefs::InfoToOtherMS>,
     db: sync::Arc<typedefs::InMemModDB>,
+    _cli: sync::Arc<bool>,
 ) -> response::Response {
     payload.app_id = app_id;
     payload.app_name.clone_from(&app_name);
